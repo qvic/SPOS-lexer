@@ -1,3 +1,5 @@
+import java.util.Objects;
+
 public class Token {
 
     private int beginIndex;
@@ -31,5 +33,21 @@ public class Token {
     @Override
     public String toString() {
         return String.format("%3d to %3d  - %11s - %s", beginIndex, endIndex, tokenType, tokenString);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Token token = (Token) o;
+        return beginIndex == token.beginIndex &&
+                endIndex == token.endIndex &&
+                tokenType == token.tokenType &&
+                Objects.equals(tokenString, token.tokenString);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(beginIndex, endIndex, tokenType, tokenString);
     }
 }

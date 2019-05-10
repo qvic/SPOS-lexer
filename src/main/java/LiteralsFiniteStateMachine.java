@@ -1,3 +1,5 @@
+import util.CharUtils;
+
 public class LiteralsFiniteStateMachine {
 
     private int currentPosition;
@@ -10,6 +12,18 @@ public class LiteralsFiniteStateMachine {
         switch (currentState) {
             case INITIAL:
                 if (Character.isDigit(character)) {
+                    if (character == '0') {
+                        if (lookahead.charAt(0) == 'x') {
+                            currentPosition++;
+                            return LiteralState.HEX_INTEGER;
+                        } else if (lookahead.charAt(0) == 'b') {
+                            currentPosition++;
+                            return LiteralState.BIN_INTEGER;
+                        } else if (lookahead.charAt(0) == 'o') {
+                            currentPosition++;
+                            return LiteralState.OCT_INTEGER;
+                        }
+                    }
                     return LiteralState.INTEGER;
                 }
 
@@ -191,6 +205,27 @@ public class LiteralsFiniteStateMachine {
                 }
 
                 break;
+
+            case HEX_INTEGER:
+                if (CharUtils.isHexCharacter(character)) {
+                    return LiteralState.HEX_INTEGER;
+                }
+
+                break;
+            case BIN_INTEGER:
+
+                if (character == '0' || character == '1') {
+                    return LiteralState.BIN_INTEGER;
+                }
+
+                break;
+
+            case OCT_INTEGER:
+                if (character >= '0' && character <= '7') {
+                    return LiteralState.OCT_INTEGER;
+                }
+
+                break;
             default:
                 break;
         }
@@ -209,13 +244,19 @@ public class LiteralsFiniteStateMachine {
                 if (currentState.isAccepting()) {
                     return new Token(position, position + currentPosition,
                             input.subSequence(0, currentPosition).toString(),
-                            TokenType.valueOf(currentState.name()));
+                            currentState.getCorrespondingTokenType());
                 } else {
                     return null;
                 }
             }
 
             currentState = nextState;
+        }
+
+        if (currentState.isAccepting()) {
+            return new Token(position, position + currentPosition,
+                    input.subSequence(0, currentPosition).toString(),
+                    currentState.getCorrespondingTokenType());
         }
 
         return null;

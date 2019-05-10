@@ -1,39 +1,53 @@
 public enum LiteralState implements State {
 
-    INITIAL(false),
-    NO_NEXT_STATE(false),
+    INITIAL,
+    NO_NEXT_STATE,
 
-    DECIMAL_INTEGER(false),
-    OCT_INTEGER(false),
-    HEX_INTEGER(false),
-    BIN_INTEGER(false),
-    LONG_INTEGER(true),
-    INTEGER(true),
+    LONG_INTEGER(TokenType.LONG_INTEGER),
+    DECIMAL_INTEGER,
+    OCT_INTEGER(TokenType.INTEGER),
+    HEX_INTEGER(TokenType.INTEGER),
+    BIN_INTEGER(TokenType.INTEGER),
+    INTEGER(TokenType.INTEGER),
 
-    FLOAT(true),
+    FLOAT(TokenType.FLOAT),
 
-    IMAGINARY_NUMBER(true),
+    IMAGINARY_NUMBER(TokenType.IMAGINARY_NUMBER),
 
-    STRING_PREFIX(false),
-    RAW_STRING_START(false),
-    SHORT_STRING_ITEM(false),
-    ESCAPE_SEQ(false),
-    SHORT_STRING_ITEM_SINGLE_QUOTED(false),
-    ESCAPE_SEQ_SINGLE_QUOTED(false),
-    LONG_STRING_ITEM(false),
-    ESCAPE_SEQ_LONG_STRING(false),
-    LONG_STRING_ITEM_SINGLE_QUOTED(false),
-    ESCAPE_SEQ_LONG_STRING_SINGLE_QUOTED(false),
-    STRING(true);
+    STRING_PREFIX,
+    RAW_STRING_START,
+    SHORT_STRING_ITEM,
+    ESCAPE_SEQ,
+    SHORT_STRING_ITEM_SINGLE_QUOTED,
+    ESCAPE_SEQ_SINGLE_QUOTED,
+    LONG_STRING_ITEM,
+    ESCAPE_SEQ_LONG_STRING,
+    LONG_STRING_ITEM_SINGLE_QUOTED,
+    ESCAPE_SEQ_LONG_STRING_SINGLE_QUOTED,
+    STRING(TokenType.STRING);
+
 
     private boolean accepting;
+    private TokenType correspondingTokenType;
 
-    LiteralState(boolean accepting) {
-        this.accepting = accepting;
+    LiteralState() {
+        this.accepting = false;
+    }
+
+    LiteralState(TokenType correspondingTokenType) {
+        this.accepting = true;
+        this.correspondingTokenType = correspondingTokenType;
     }
 
     @Override
     public boolean isAccepting() {
         return accepting;
+    }
+
+    public TokenType getCorrespondingTokenType() {
+        if (correspondingTokenType == null) {
+            throw new IllegalStateException("Not an accepting state");
+        }
+        return correspondingTokenType;
     }
 }

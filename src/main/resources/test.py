@@ -1,15 +1,15 @@
 if b <= c \
         and z <= x:
-    # lol
+    # comment1
 
     a = [
-        "Lol", "Kek",
-        "Cheburek"
+        "item1", "item2",
+        "item3"
     ]
 
     # hellol
-    a += 2234234.232342  # kek
-    for i in range(1, 98234284): # heh
+    a += 2234234.232342  # comment2
+    for i in range(1, 98234284): # comment3
         f = "Hello, world!"
         f = r"Hello, world!"
         f = R"Hello, world!"
@@ -36,7 +36,7 @@ if b <= c \
         Bye
         '''
 
-        a = 3.14
+        e1a = 3.14
         a = 10.
         a = .001
         a = 1e100
