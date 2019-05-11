@@ -1,11 +1,13 @@
+package token;
+
 import java.util.regex.Pattern;
 
-public class IdentifiedPattern {
+public class TokenPattern {
 
     private TokenType tokenType;
     private Pattern pattern;
 
-    public IdentifiedPattern(TokenType tokenType, Pattern pattern) {
+    public TokenPattern(TokenType tokenType, Pattern pattern) {
         this.tokenType = tokenType;
         this.pattern = pattern;
     }

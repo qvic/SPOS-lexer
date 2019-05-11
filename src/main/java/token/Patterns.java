@@ -1,3 +1,5 @@
+package token;
+
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -35,12 +37,12 @@ public class Patterns {
             Pattern.DOTALL
     );
     
-    public static List<IdentifiedPattern> getCompiledRegexesForTokens() {
+    public static List<TokenPattern> getTokenPatterns() {
         return List.of(
-                new IdentifiedPattern(TokenType.KEYWORD, KEYWORD),
-                new IdentifiedPattern(TokenType.DELIMITER, DELIMITER),
-                new IdentifiedPattern(TokenType.OPERATOR, OPERATOR),
-                new IdentifiedPattern(TokenType.IDENTIFIER, IDENTIFIER)
+                new TokenPattern(TokenType.KEYWORD, KEYWORD),
+                new TokenPattern(TokenType.DELIMITER, DELIMITER),
+                new TokenPattern(TokenType.OPERATOR, OPERATOR),
+                new TokenPattern(TokenType.IDENTIFIER, IDENTIFIER)
         );
     }
 }

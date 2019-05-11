@@ -1,34 +1,29 @@
+import automaton.LiteralsFiniteStateMachine;
+import token.Patterns;
+import token.Token;
+import token.TokenPattern;
+import token.TokenType;
+import util.LexerException;
+
 import java.nio.CharBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class Lexer {
 
     private final LiteralsFiniteStateMachine fsm;
-    private List<Token> result;
+    private final List<Token> result;
     private int lastIndent;
 
     public Lexer() {
         result = new ArrayList<>();
-
-//        compiledRegex = Pattern.compile(
-//                "(?:(?<DELIMITER>\\(|\\)|\\[|\\]|\\{|\\}|@|,|:|\\.|`|=|;|" +
-//                        "\\+=|-=|\\*=|/=|//=|%=|&=|\\|=|\\^=|>>=|<<=|\\*\\*=)|" +
-//                        "(?<OPERATOR>\\+|-|\\*|\\*\\*|/|//|%|<<|>>|&|\\||\\^|~|<=|>=|<|>|==|!=|<>)|" +
-//                        "(?<KEYWORD>and|del|from|not|while|as|elif|global|or|" +
-//                        "with|assert|else|if|pass|yield|break|except|import|" +
-//                        "print|class|exec|in|raise|continue|finally|is|return|" +
-//                        "def|for|lambda|try)[^_a-zA-Z0-9]|" +
-//                        "(?<IDENTIFIER>[_a-zA-Z][_a-zA-Z0-9]*)).*", Pattern.DOTALL);
-
         fsm = new LiteralsFiniteStateMachine();
-
         lastIndent = 0;
     }
 
     public void tokenize(String input) {
+        result.clear();
         int position = 0;
 
         CharSequence charSequence = CharBuffer.wrap(input);
@@ -37,7 +32,6 @@ public class Lexer {
             if (token == null) {
                 break;
             }
-            System.out.println(token);
             result.add(token);
             position = token.getEndIndex();
         }
@@ -47,47 +41,42 @@ public class Lexer {
         return result;
     }
 
-    private Token getNextToken(CharSequence input, int startPosition) {
-        if (isEnd(input, startPosition)) {
+    private Token getNextToken(CharSequence sourceText, int startPosition) {
+        if (isEnd(sourceText, startPosition)) {
             return null;
         }
-        if (isLineBreak(input, startPosition)) {
-            return new Token(startPosition, startPosition + 1, "", TokenType.NEWLINE);
+        if (isLineBreak(sourceText, startPosition)) {
+            return getNewlineToken(startPosition);
         }
 
-        CharSequence charSequence = truncateSequence(input, startPosition);
+        CharSequence charSequence = getTruncatedSequence(sourceText, startPosition);
 
         Matcher whitespaceMatcher = Patterns.WHITESPACE.matcher(charSequence);
         if (whitespaceMatcher.matches()) {
             int offset = whitespaceMatcher.end(1);
-            if (startPosition > 0 && isLineBreak(input, startPosition - 1)) {
-                if (lastIndent < offset) {
-                    lastIndent = offset;
-                    return new Token(startPosition, startPosition + offset, "", TokenType.INDENT);
-                } else if (lastIndent > offset) {
-                    lastIndent = offset;
-                    return new Token(startPosition, startPosition + offset, "", TokenType.DEDENT);
-                } else {
-                    System.out.println("On same level");
-                }
+
+            Token indentationToken = processIndentation(sourceText, startPosition, offset);
+            if (indentationToken != null) {
+                return indentationToken;
             }
+
             startPosition += offset;
-            charSequence = truncateSequence(charSequence, offset);
+            charSequence = getTruncatedSequence(charSequence, offset);
         }
 
         Matcher commentMatcher = Patterns.COMMENT.matcher(charSequence);
         if (commentMatcher.matches()) {
             int offset = commentMatcher.end(1);
             startPosition += offset;
-            System.out.println("Comment: " + charSequence.subSequence(0, offset));
-            charSequence = truncateSequence(charSequence, offset);
+            // process comments
+            charSequence = getTruncatedSequence(charSequence, offset);
         }
 
-        if (isEnd(input, startPosition)) {
+        if (isEnd(sourceText, startPosition)) {
             return null;
         }
-        if (isLineBreak(input, startPosition)) {
-            return new Token(startPosition, startPosition + 1, "", TokenType.NEWLINE);
+        if (isLineBreak(sourceText, startPosition)) {
+            return getNewlineToken(startPosition);
         }
 
         Token fsmToken = fsm.run(charSequence, startPosition);
@@ -95,8 +84,9 @@ public class Lexer {
             return fsmToken;
         }
 
-        for (IdentifiedPattern pattern : Patterns.getCompiledRegexesForTokens()) {
+        for (TokenPattern pattern : Patterns.getTokenPatterns()) {
             Matcher matcher = pattern.getPattern().matcher(charSequence);
+
             if (matcher.matches()) {
                 String token = matcher.group(1);
                 if (token != null) {
@@ -105,7 +95,9 @@ public class Lexer {
             }
         }
 
-        if (!isEnd(input, startPosition)) throw new RuntimeException("Lexer error at position " + startPosition);
+        if (!isEnd(sourceText, startPosition)) {
+            throw new LexerException("Exception at position " + startPosition);
+        }
 
         return null;
     }
@@ -118,7 +110,24 @@ public class Lexer {
         return charSequence.charAt(position) == '\n';
     }
 
-    private CharSequence truncateSequence(CharSequence charSequence, int from) {
+    private CharSequence getTruncatedSequence(CharSequence charSequence, int from) {
         return charSequence.subSequence(from, charSequence.length());
+    }
+
+    private Token processIndentation(CharSequence input, int startPosition, int matchedCount) {
+        if (startPosition > 0 && isLineBreak(input, startPosition - 1)) {
+            if (lastIndent < matchedCount) {
+                lastIndent = matchedCount;
+                return new Token(startPosition, startPosition + matchedCount, "", TokenType.INDENT);
+            } else if (lastIndent > matchedCount) {
+                lastIndent = matchedCount;
+                return new Token(startPosition, startPosition + matchedCount, "", TokenType.DEDENT);
+            }
+        }
+        return null;
+    }
+
+    private Token getNewlineToken(int startPosition) {
+        return new Token(startPosition, startPosition + 1, "", TokenType.NEWLINE);
     }
 }

@@ -1,10 +1,13 @@
-public enum LiteralState implements State {
+package automaton;
+
+import token.TokenType;
+
+public enum LiteralState {
 
     INITIAL,
     NO_NEXT_STATE,
 
     LONG_INTEGER(TokenType.LONG_INTEGER),
-    DECIMAL_INTEGER,
     OCT_INTEGER(TokenType.INTEGER),
     HEX_INTEGER(TokenType.INTEGER),
     BIN_INTEGER(TokenType.INTEGER),
@@ -39,7 +42,6 @@ public enum LiteralState implements State {
         this.correspondingTokenType = correspondingTokenType;
     }
 
-    @Override
     public boolean isAccepting() {
         return accepting;
     }

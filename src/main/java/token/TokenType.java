@@ -1,3 +1,5 @@
+package token;
+
 public enum TokenType {
     KEYWORD,
     IDENTIFIER,
@@ -5,6 +7,10 @@ public enum TokenType {
     OPERATOR,
     INTEGER,
     FLOAT,
+    LONG_INTEGER,
+    IMAGINARY_NUMBER,
     STRING,
-    INDENT, DEDENT, LONG_INTEGER, IMAGINARY_NUMBER, NEWLINE
+    INDENT,
+    DEDENT,
+    NEWLINE
 }

@@ -8,7 +8,7 @@ if b <= c \
     ]
 
     # hellol
-    a += 2234234.232342  # comment2
+    a += 2234234.232342 # comment2
     for i in range(1, 98234284): # comment3
         f = "Hello, world!"
         f = r"Hello, world!"
@@ -35,6 +35,8 @@ if b <= c \
         b = BR'''
         Bye
         '''
+
+        __a__ = 0xadad
 
         e1a = 3.14
         a = 10.

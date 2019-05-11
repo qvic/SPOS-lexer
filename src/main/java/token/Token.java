@@ -1,3 +1,5 @@
+package token;
+
 import java.util.Objects;
 
 public class Token {

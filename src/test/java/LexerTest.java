@@ -1,4 +1,6 @@
 import org.junit.jupiter.api.Test;
+import token.Token;
+import token.TokenType;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -9,51 +11,59 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class LexerTest {
 
+    private static void printTokens(Lexer lexer) {
+        for (Token token : lexer.getTokens()) {
+            System.out.println(token);
+        }
+    }
+
     @Test
     void testFile() throws IOException {
         String program = new String(Files.readAllBytes(Paths.get("src/main/resources/test.py")));
 
         Lexer lexer = new Lexer();
         lexer.tokenize(program);
+
+        printTokens(lexer);
     }
 
     @Test
     void testKeywords() {
         Lexer lexer = new Lexer();
-        String input = "assert 123and del _fromi tryfor =if( while123 return";
+        String input = "assert _and del _fromi tryfor =if( while123 return";
 
         lexer.tokenize(input);
         List<Token> tokens = lexer.getTokens();
+        printTokens(lexer);
 
         assertThat(tokens).containsExactly(
                 new Token(0, 6, "assert", TokenType.KEYWORD),
-                new Token(7, 10, "123", TokenType.INTEGER),
-                new Token(10, 13, "and", TokenType.KEYWORD),
-                new Token(14, 17, "del", TokenType.KEYWORD),
-                new Token(18, 24, "_fromi", TokenType.IDENTIFIER),
-                new Token(25, 31, "tryfor", TokenType.IDENTIFIER),
-                new Token(32, 33, "=", TokenType.DELIMITER),
-                new Token(33, 35, "if", TokenType.KEYWORD),
-                new Token(35, 36, "(", TokenType.DELIMITER),
-                new Token(37, 45, "while123", TokenType.IDENTIFIER),
-                new Token(46, 52, "return", TokenType.KEYWORD)
+                new Token(7, 11, "_and", TokenType.IDENTIFIER),
+                new Token(12, 15, "del", TokenType.KEYWORD),
+                new Token(16, 22, "_fromi", TokenType.IDENTIFIER),
+                new Token(23, 29, "tryfor", TokenType.IDENTIFIER),
+                new Token(30, 31, "=", TokenType.DELIMITER),
+                new Token(31, 33, "if", TokenType.KEYWORD),
+                new Token(33, 34, "(", TokenType.DELIMITER),
+                new Token(35, 43, "while123", TokenType.IDENTIFIER),
+                new Token(44, 50, "return", TokenType.KEYWORD)
         );
     }
 
     @Test
     void testIdentifiers() {
         Lexer lexer = new Lexer();
-        String input = "234_123 test _test from_test";
+        String input = "234 _123 test _test from_test";
 
         lexer.tokenize(input);
         List<Token> tokens = lexer.getTokens();
 
         assertThat(tokens).containsExactly(
                 new Token(0, 3, "234", TokenType.INTEGER),
-                new Token(3, 7, "_123", TokenType.IDENTIFIER),
-                new Token(8, 12, "test", TokenType.IDENTIFIER),
-                new Token(13, 18, "_test", TokenType.IDENTIFIER),
-                new Token(19, 28, "from_test", TokenType.IDENTIFIER)
+                new Token(4, 8, "_123", TokenType.IDENTIFIER),
+                new Token(9, 13, "test", TokenType.IDENTIFIER),
+                new Token(14, 19, "_test", TokenType.IDENTIFIER),
+                new Token(20, 29, "from_test", TokenType.IDENTIFIER)
         );
     }
 

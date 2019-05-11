@@ -3,12 +3,17 @@ package util;
 public class CharUtils {
 
     public static boolean isHexCharacter(char c) {
-        if (Character.isDigit(c) || Character.toLowerCase(c) == 'a' ||
+        return Character.isDigit(c) || Character.toLowerCase(c) == 'a' ||
                 Character.toLowerCase(c) == 'b' || Character.toLowerCase(c) == 'c' ||
                 Character.toLowerCase(c) == 'd' || Character.toLowerCase(c) == 'e' ||
-                Character.toLowerCase(c) == 'f') {
-            return true;
-        }
-        return false;
+                Character.toLowerCase(c) == 'f';
+    }
+
+    public static boolean isBinCharacter(char c) {
+        return c == '0' || c == '1';
+    }
+
+    public static boolean isOctCharacter(char c) {
+        return c >= '0' && c <= '7';
     }
 }
