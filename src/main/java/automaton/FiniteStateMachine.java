@@ -1,19 +1,32 @@
 package automaton;
 
+import token.Patterns;
 import token.Token;
 import util.CharUtils;
+import util.LexicalError;
 
-import static automaton.LiteralState.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
 
-public class LiteralsFiniteStateMachine {
+import static automaton.State.*;
+
+public class FiniteStateMachine {
 
     private int currentPosition;
     private CharSequence charSequence;
+    private int positionInSource;
+    private List<LexicalError> errors = new ArrayList<>();
 
-    private LiteralState nextState(LiteralState currentState) {
+    public List<LexicalError> getErrors() {
+        return errors;
+    }
+
+    private State nextState(State currentState) {
 
         char character = charSequence.charAt(currentPosition);
         CharSequence lookahead = charSequence.subSequence(currentPosition + 1, charSequence.length());
+        CharSequence all = charSequence.subSequence(currentPosition, charSequence.length());
 
         switch (currentState) {
             case INITIAL:
@@ -33,7 +46,7 @@ public class LiteralsFiniteStateMachine {
                     return INTEGER;
                 }
 
-                if (character == '.') {
+                if (character == '.' && lookahead.length() >= 1 && Character.isDigit(lookahead.charAt(0))) {
                     return FLOAT;
                 }
 
@@ -53,12 +66,92 @@ public class LiteralsFiniteStateMachine {
                     return SHORT_STRING_ITEM_SINGLE_QUOTED;
                 }
 
-                if (Character.toLowerCase(character) == 'r') {
-                    return RAW_STRING_START;
+                if (Character.toLowerCase(character) == 'u' || Character.toLowerCase(character) == 'b') {
+                    if (lookahead.length() >= 1 && lookahead.charAt(0) == '"') {
+                        return STRING_START;
+                    } else if (lookahead.length() >= 2 && Character.toLowerCase(lookahead.charAt(0)) == 'r' && lookahead.charAt(1) == '"') {
+                        currentPosition++;
+                        return STRING_START;
+                    }
                 }
 
-                if (Character.toLowerCase(character) == 'u' || Character.toLowerCase(character) == 'b') {
-                    return STRING_PREFIX;
+                if (Character.getType(character) == Character.LOWERCASE_LETTER || Character.getType(character) == Character.UPPERCASE_LETTER || character == '_') {
+                    Matcher matcher = Patterns.KEYWORD.matcher(all);
+                    if (matcher.matches()) {
+                        currentPosition = matcher.end(1) - 1;
+                        return KEYWORD;
+                    }
+                    return IDENTIFIER;
+                }
+
+                if (character == '+' || character == '-' || character == '%' || character == '&' || character == '|' || character == '^') {
+                    if (lookahead.length() >= 1 && lookahead.charAt(0) == '=') {
+                        currentPosition++;
+                        return DELIMITER;
+                    }
+                    return OPERATOR;
+                }
+
+                if (character == '~') {
+                    return OPERATOR;
+                }
+
+                if (character == '(' || character == ')' || character == '[' || character == ']' || character == '{' ||
+                        character == '}' || character == '@' || character == ',' || character == ':' ||
+                        character == '.' || character == '`' || character == ';') {
+                    return DELIMITER;
+                }
+
+                if (character == '=') {
+                    if (lookahead.length() >= 1 && lookahead.charAt(0) == '=') {
+                        currentPosition++;
+                        return OPERATOR;
+                    }
+                    return DELIMITER;
+                }
+
+                if (character == '*' || character == '/') {
+                    if (lookahead.length() >= 1) {
+                        if (lookahead.charAt(0) == '=') {
+                            currentPosition++;
+                            return DELIMITER;
+                        } else if (lookahead.charAt(0) == character) {
+                            currentPosition++;
+                            if (lookahead.length() >= 2 && lookahead.charAt(1) == '=') {
+                                currentPosition++;
+                                return DELIMITER;
+                            }
+                            return OPERATOR;
+                        }
+                    }
+                    return OPERATOR;
+                }
+
+                if (character == '<' || character == '>') {
+                    if (lookahead.length() >= 1) {
+                        if (character == '<' && lookahead.charAt(0) == '>') {
+                            currentPosition++;
+                            return OPERATOR;
+                        } else if (lookahead.charAt(0) == '=') {
+                            currentPosition++;
+                            return OPERATOR;
+                        } else if (lookahead.charAt(0) == character) {
+                            currentPosition++;
+                            if (lookahead.length() >= 2 && lookahead.charAt(1) == '=') {
+                                currentPosition++;
+                                return DELIMITER;
+                            }
+                            return OPERATOR;
+                        }
+                    }
+                    return OPERATOR;
+                }
+
+                break;
+
+            case IDENTIFIER:
+                if (Character.isLetterOrDigit(character) || character == '_') {
+                    return IDENTIFIER;
                 }
 
                 break;
@@ -91,30 +184,8 @@ public class LiteralsFiniteStateMachine {
 
                 return LONG_STRING_ITEM_SINGLE_QUOTED;
 
-            case STRING_PREFIX:
-                if (Character.toLowerCase(character) == 'r') {
-                    return RAW_STRING_START;
-                }
+            case STRING_START:
 
-                if (character == '"') {
-                    if (lookahead.length() >= 2 && lookahead.charAt(0) == '"' && lookahead.charAt(1) == '"') {
-                        currentPosition += 2;
-                        return LONG_STRING_ITEM;
-                    }
-                    return SHORT_STRING_ITEM;
-                }
-
-                if (character == '\'') {
-                    if (lookahead.length() >= 2 && lookahead.charAt(0) == '\'' && lookahead.charAt(1) == '\'') {
-                        currentPosition += 2;
-                        return LONG_STRING_ITEM_SINGLE_QUOTED;
-                    }
-                    return SHORT_STRING_ITEM_SINGLE_QUOTED;
-                }
-
-                break;
-
-            case RAW_STRING_START:
                 if (character == '"') {
                     if (lookahead.length() >= 2 && lookahead.charAt(0) == '"' && lookahead.charAt(1) == '"') {
                         currentPosition += 2;
@@ -142,11 +213,14 @@ public class LiteralsFiniteStateMachine {
                     return ESCAPE_SEQ;
                 }
 
-                if (character != '\n') {
-                    return SHORT_STRING_ITEM;
+                if (character == '\n') {
+                    errors.add(new LexicalError(positionInSource,
+                            charSequence.subSequence(0, currentPosition + 1).toString(),
+                            "Unexpected line break in string literal"));
+                    return ERROR_SEQUENCE;
                 }
 
-                break;
+                return SHORT_STRING_ITEM;
 
             case SHORT_STRING_ITEM_SINGLE_QUOTED:
                 if (character == '\'') {
@@ -159,6 +233,13 @@ public class LiteralsFiniteStateMachine {
 
                 if (character != '\n') {
                     return SHORT_STRING_ITEM_SINGLE_QUOTED;
+                }
+
+                if (character == '\n') {
+                    errors.add(new LexicalError(positionInSource,
+                            charSequence.subSequence(0, currentPosition + 1).toString(),
+                            "Unexpected line break in string literal"));
+                    return ERROR_SEQUENCE;
                 }
 
                 break;
@@ -196,6 +277,13 @@ public class LiteralsFiniteStateMachine {
                     return IMAGINARY_NUMBER;
                 }
 
+                if (Character.isAlphabetic(character)) {
+                    errors.add(new LexicalError(positionInSource,
+                            charSequence.subSequence(0, currentPosition + 1).toString(),
+                            "Unexpected symbol in integer literal"));
+                    return ERROR_SEQUENCE;
+                }
+
                 break;
 
             case FLOAT:
@@ -214,11 +302,24 @@ public class LiteralsFiniteStateMachine {
                     return IMAGINARY_NUMBER;
                 }
 
+                if (Character.isAlphabetic(character)) {
+                    errors.add(new LexicalError(positionInSource,
+                            charSequence.subSequence(0, currentPosition + 1).toString(),
+                            "Unexpected symbol in float literal"));
+                    return ERROR_SEQUENCE;
+                }
+
                 break;
 
             case HEX_INTEGER:
                 if (CharUtils.isHexCharacter(character)) {
                     return HEX_INTEGER;
+                }
+
+                if (Character.isAlphabetic(character)) {
+                    errors.add(new LexicalError(positionInSource,
+                            charSequence.subSequence(0, currentPosition + 1).toString(),
+                            "Unexpected symbol in hex integer literal"));
                 }
 
                 break;
@@ -228,6 +329,13 @@ public class LiteralsFiniteStateMachine {
                     return BIN_INTEGER;
                 }
 
+                if (Character.isAlphabetic(character)) { // todo check if it's not delimiter, operator or whitespace
+                    errors.add(new LexicalError(positionInSource,
+                            charSequence.subSequence(0, currentPosition + 1).toString(),
+                            "Unexpected symbol in bin integer literal"));
+                    return ERROR_SEQUENCE;
+                }
+
                 break;
 
             case OCT_INTEGER:
@@ -235,7 +343,15 @@ public class LiteralsFiniteStateMachine {
                     return OCT_INTEGER;
                 }
 
+                if (Character.isAlphabetic(character)) {
+                    errors.add(new LexicalError(positionInSource,
+                            charSequence.subSequence(0, currentPosition + 1).toString(),
+                            "Unexpected symbol in oct integer literal"));
+                    return ERROR_SEQUENCE;
+                }
+
                 break;
+
             default:
                 break;
         }
@@ -245,11 +361,12 @@ public class LiteralsFiniteStateMachine {
     public Token run(CharSequence input, int position) {
 
         charSequence = input;
+        positionInSource = position;
         currentPosition = 0;
-        LiteralState currentState = INITIAL;
+        State currentState = INITIAL;
 
         for (currentPosition = 0; currentPosition < input.length(); currentPosition++) {
-            LiteralState nextState = nextState(currentState);
+            State nextState = nextState(currentState);
 
             if (nextState == NO_NEXT_STATE) {
                 if (currentState.isAccepting()) {

@@ -2,7 +2,7 @@ package automaton;
 
 import token.TokenType;
 
-public enum LiteralState {
+public enum State {
 
     INITIAL,
     NO_NEXT_STATE,
@@ -17,7 +17,7 @@ public enum LiteralState {
 
     IMAGINARY_NUMBER(TokenType.IMAGINARY_NUMBER),
 
-    STRING_PREFIX,
+    STRING_START,
     RAW_STRING_START,
     SHORT_STRING_ITEM,
     ESCAPE_SEQ,
@@ -27,17 +27,23 @@ public enum LiteralState {
     ESCAPE_SEQ_LONG_STRING,
     LONG_STRING_ITEM_SINGLE_QUOTED,
     ESCAPE_SEQ_LONG_STRING_SINGLE_QUOTED,
-    STRING(TokenType.STRING);
+    STRING(TokenType.STRING),
+
+    DELIMITER(TokenType.DELIMITER),
+    OPERATOR(TokenType.OPERATOR),
+    KEYWORD(TokenType.KEYWORD),
+    IDENTIFIER(TokenType.IDENTIFIER),
+    ERROR_SEQUENCE(TokenType.ERROR_SEQUENCE);
 
 
     private boolean accepting;
     private TokenType correspondingTokenType;
 
-    LiteralState() {
+    State() {
         this.accepting = false;
     }
 
-    LiteralState(TokenType correspondingTokenType) {
+    State(TokenType correspondingTokenType) {
         this.accepting = true;
         this.correspondingTokenType = correspondingTokenType;
     }

@@ -12,5 +12,6 @@ public enum TokenType {
     STRING,
     INDENT,
     DEDENT,
+    ERROR_SEQUENCE,
     NEWLINE
 }

@@ -1,25 +1,27 @@
-import automaton.LiteralsFiniteStateMachine;
+import automaton.FiniteStateMachine;
 import token.Patterns;
 import token.Token;
-import token.TokenPattern;
 import token.TokenType;
 import util.LexerException;
 
 import java.nio.CharBuffer;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import java.util.regex.Matcher;
 
 public class Lexer {
 
-    private final LiteralsFiniteStateMachine fsm;
+    private final FiniteStateMachine fsm;
     private final List<Token> result;
-    private int lastIndent;
+    private Deque<Integer> indents;
 
     public Lexer() {
         result = new ArrayList<>();
-        fsm = new LiteralsFiniteStateMachine();
-        lastIndent = 0;
+        fsm = new FiniteStateMachine();
+        indents = new ArrayDeque<>();
+        indents.addLast(0);
     }
 
     public void tokenize(String input) {
@@ -35,6 +37,8 @@ public class Lexer {
             result.add(token);
             position = token.getEndIndex();
         }
+
+        System.out.println(fsm.getErrors());
     }
 
     public List<Token> getTokens() {
@@ -84,16 +88,18 @@ public class Lexer {
             return fsmToken;
         }
 
-        for (TokenPattern pattern : Patterns.getTokenPatterns()) {
-            Matcher matcher = pattern.getPattern().matcher(charSequence);
 
-            if (matcher.matches()) {
-                String token = matcher.group(1);
-                if (token != null) {
-                    return new Token(startPosition, startPosition + token.length(), token, pattern.getTokenType());
-                }
-            }
-        }
+
+//        for (TokenPattern pattern : Patterns.getTokenPatterns()) {
+//            Matcher matcher = pattern.getPattern().matcher(charSequence);
+//
+//            if (matcher.matches()) {
+//                String token = matcher.group(1);
+//                if (token != null) {
+//                    return new Token(startPosition, startPosition + token.length(), token, pattern.getTokenType());
+//                }
+//            }
+//        }
 
         if (!isEnd(sourceText, startPosition)) {
             throw new LexerException("Exception at position " + startPosition);
@@ -116,11 +122,17 @@ public class Lexer {
 
     private Token processIndentation(CharSequence input, int startPosition, int matchedCount) {
         if (startPosition > 0 && isLineBreak(input, startPosition - 1)) {
-            if (lastIndent < matchedCount) {
-                lastIndent = matchedCount;
+            int topIndent = indents.getLast();
+            if (topIndent < matchedCount) {
+                indents.addLast(matchedCount);
                 return new Token(startPosition, startPosition + matchedCount, "", TokenType.INDENT);
-            } else if (lastIndent > matchedCount) {
-                lastIndent = matchedCount;
+            } else if (topIndent > matchedCount) {
+                do {
+                    topIndent = indents.removeLast();
+                } while (matchedCount < topIndent);
+                if (matchedCount != topIndent) {
+                    throw new LexerException("Unexpected indentation at " + startPosition);
+                }
                 return new Token(startPosition, startPosition + matchedCount, "", TokenType.DEDENT);
             }
         }

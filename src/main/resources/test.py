@@ -2,6 +2,10 @@ if b <= c \
         and z <= x:
     # comment1
 
+    y = "sdfsdfsdfdsfdsff
+
+    x = 1a
+
     a = [
         "item1", "item2",
         "item3"
@@ -50,3 +54,8 @@ if b <= c \
         # and here
     b = 34234
 # i'm here
+
+if a:
+        for dsfds:
+              dsfds
+        sdffd
