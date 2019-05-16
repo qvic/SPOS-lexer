@@ -12,20 +12,6 @@ public class Patterns {
                     "def|for|lambda|try)(?![_a-zA-Z0-9]).*",
             Pattern.DOTALL
     );
-    
-    public static final Pattern DELIMITER = Pattern.compile(
-            "(\\(|\\)|\\[|\\]|\\{|\\}|@|,|:|\\.|`|=(?!=)|;|\\+=|-=|\\*=|/=|//=|%=|&=|\\|=|\\^=|>>=|<<=|\\*\\*=).*",
-            Pattern.DOTALL
-    );
-
-    public static final Pattern OPERATOR = Pattern.compile(
-            "(\\+|-|\\*\\*|\\*|//|/|%|<<|>>|&|\\||\\^|~|<=|>=|<>|<|>|==|!=).*",
-            Pattern.DOTALL
-    );
-    public static final Pattern IDENTIFIER = Pattern.compile(
-            "([_a-zA-Z][_a-zA-Z0-9]*).*",
-            Pattern.DOTALL
-    );
 
     public static final Pattern WHITESPACE = Pattern.compile(
             "((?:[^\\S\\n]|\\\\\\n)+).*", // matches whitespace or escaped line break
@@ -36,13 +22,4 @@ public class Patterns {
             "(#[^\\n]*).*", // matches comment to the end of the line
             Pattern.DOTALL
     );
-    
-    public static List<TokenPattern> getTokenPatterns() {
-        return List.of(
-                new TokenPattern(TokenType.KEYWORD, KEYWORD),
-                new TokenPattern(TokenType.DELIMITER, DELIMITER),
-                new TokenPattern(TokenType.OPERATOR, OPERATOR),
-                new TokenPattern(TokenType.IDENTIFIER, IDENTIFIER)
-        );
-    }
 }

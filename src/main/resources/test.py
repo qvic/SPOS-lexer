@@ -5,11 +5,22 @@ if b <= c \
     y = "sdfsdfsdfdsfdsff
 
     x = 1a
+    y=0o239*a
+    y=0b010102+23
+    y=0xa234bcg+1
+    y=0xa234bcg==1
+
+    sdf$?
+    ?dsf$
+     0sd13
 
     a = [
         "item1", "item2",
         "item3"
     ]
+
+    a$
+    $
 
     # hellol
     a += 2234234.232342 # comment2
@@ -58,4 +69,5 @@ if b <= c \
 if a:
         for dsfds:
               dsfds
-        sdffd
+         sdffd
+         sdfdsf

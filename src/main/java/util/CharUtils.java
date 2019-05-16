@@ -16,4 +16,12 @@ public class CharUtils {
     public static boolean isOctCharacter(char c) {
         return c >= '0' && c <= '7';
     }
+
+    public static boolean isDelimiterOrOperatorStart(char c) {
+        return c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' || c == '@' ||
+                c == ',' || c == ':' || c == '.' || c == '`' || c == ';' ||
+                c == '+' || c == '-' || c == '*' || c == '/' || c == '%' ||
+                c == '&' || c == '|' || c == '^' || c == '~' ||
+                c == '>' || c == '=' || c == '!' || c == '<';
+    }
 }

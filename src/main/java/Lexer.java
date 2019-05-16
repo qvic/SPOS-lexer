@@ -2,7 +2,7 @@ import automaton.FiniteStateMachine;
 import token.Patterns;
 import token.Token;
 import token.TokenType;
-import util.LexerException;
+import util.ErrorRegistry;
 
 import java.nio.CharBuffer;
 import java.util.ArrayDeque;
@@ -14,18 +14,22 @@ import java.util.regex.Matcher;
 public class Lexer {
 
     private final FiniteStateMachine fsm;
-    private final List<Token> result;
-    private Deque<Integer> indents;
+    private final List<Token> tokens;
+    private final ErrorRegistry errors;
+    private final Deque<Integer> indents;
 
     public Lexer() {
-        result = new ArrayList<>();
-        fsm = new FiniteStateMachine();
+        tokens = new ArrayList<>();
+        errors = new ErrorRegistry();
+        fsm = new FiniteStateMachine(errors);
+
         indents = new ArrayDeque<>();
         indents.addLast(0);
     }
 
     public void tokenize(String input) {
-        result.clear();
+        tokens.clear();
+        errors.clear();
         int position = 0;
 
         CharSequence charSequence = CharBuffer.wrap(input);
@@ -34,15 +38,15 @@ public class Lexer {
             if (token == null) {
                 break;
             }
-            result.add(token);
+            tokens.add(token);
             position = token.getEndIndex();
         }
 
-        System.out.println(fsm.getErrors());
+        errors.printAll();
     }
 
     public List<Token> getTokens() {
-        return result;
+        return tokens;
     }
 
     private Token getNextToken(CharSequence sourceText, int startPosition) {
@@ -88,21 +92,8 @@ public class Lexer {
             return fsmToken;
         }
 
-
-
-//        for (TokenPattern pattern : Patterns.getTokenPatterns()) {
-//            Matcher matcher = pattern.getPattern().matcher(charSequence);
-//
-//            if (matcher.matches()) {
-//                String token = matcher.group(1);
-//                if (token != null) {
-//                    return new Token(startPosition, startPosition + token.length(), token, pattern.getTokenType());
-//                }
-//            }
-//        }
-
         if (!isEnd(sourceText, startPosition)) {
-            throw new LexerException("Exception at position " + startPosition);
+            errors.addError(startPosition, charSequence.toString(), "Error");
         }
 
         return null;
@@ -128,10 +119,13 @@ public class Lexer {
                 return new Token(startPosition, startPosition + matchedCount, "", TokenType.INDENT);
             } else if (topIndent > matchedCount) {
                 do {
-                    topIndent = indents.removeLast();
+                    indents.removeLast();
+                    topIndent = indents.getLast();
                 } while (matchedCount < topIndent);
                 if (matchedCount != topIndent) {
-                    throw new LexerException("Unexpected indentation at " + startPosition);
+                    errors.addError(startPosition, "", "Unexpected indentation");
+                    indents.removeLast();
+                    indents.addLast(matchedCount);
                 }
                 return new Token(startPosition, startPosition + matchedCount, "", TokenType.DEDENT);
             }

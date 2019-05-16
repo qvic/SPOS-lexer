@@ -3,6 +3,7 @@ package automaton;
 import token.Patterns;
 import token.Token;
 import util.CharUtils;
+import util.ErrorRegistry;
 import util.LexicalError;
 
 import java.util.ArrayList;
@@ -16,17 +17,18 @@ public class FiniteStateMachine {
     private int currentPosition;
     private CharSequence charSequence;
     private int positionInSource;
-    private List<LexicalError> errors = new ArrayList<>();
+    private ErrorRegistry errors;
 
-    public List<LexicalError> getErrors() {
-        return errors;
+    public FiniteStateMachine(ErrorRegistry errors) {
+        this.errors = errors;
     }
 
     private State nextState(State currentState) {
 
-        char character = charSequence.charAt(currentPosition);
-        CharSequence lookahead = charSequence.subSequence(currentPosition + 1, charSequence.length());
-        CharSequence all = charSequence.subSequence(currentPosition, charSequence.length());
+        CharSequence truncatedSource = charSequence.subSequence(currentPosition, charSequence.length());
+
+        char character = truncatedSource.charAt(0);
+        CharSequence lookahead = truncatedSource.subSequence(1, truncatedSource.length());
 
         switch (currentState) {
             case INITIAL:
@@ -55,7 +57,7 @@ public class FiniteStateMachine {
                         currentPosition += 2;
                         return LONG_STRING_ITEM;
                     }
-                    return SHORT_STRING_ITEM;
+                    return STRING_ITEM;
                 }
 
                 if (character == '\'') {
@@ -63,20 +65,27 @@ public class FiniteStateMachine {
                         currentPosition += 2;
                         return LONG_STRING_ITEM_SINGLE_QUOTED;
                     }
-                    return SHORT_STRING_ITEM_SINGLE_QUOTED;
+                    return STRING_ITEM_SINGLE_QUOTED;
+                }
+
+                if (Character.toLowerCase(character) == 'r') {
+                    if (lookahead.length() >= 1 && (lookahead.charAt(0) == '"' || lookahead.charAt(0) == '\'')) {
+                        return STRING_START;
+                    }
                 }
 
                 if (Character.toLowerCase(character) == 'u' || Character.toLowerCase(character) == 'b') {
-                    if (lookahead.length() >= 1 && lookahead.charAt(0) == '"') {
+                    if (lookahead.length() >= 1 && (lookahead.charAt(0) == '"' || lookahead.charAt(0) == '\'')) {
                         return STRING_START;
-                    } else if (lookahead.length() >= 2 && Character.toLowerCase(lookahead.charAt(0)) == 'r' && lookahead.charAt(1) == '"') {
+                    } else if (lookahead.length() >= 2 && Character.toLowerCase(lookahead.charAt(0)) == 'r' &&
+                            (lookahead.charAt(1) == '"' || lookahead.charAt(1) == '\'')) {
                         currentPosition++;
                         return STRING_START;
                     }
                 }
 
-                if (Character.getType(character) == Character.LOWERCASE_LETTER || Character.getType(character) == Character.UPPERCASE_LETTER || character == '_') {
-                    Matcher matcher = Patterns.KEYWORD.matcher(all);
+                if (Character.isLowerCase(character) || Character.isUpperCase(character) || character == '_') {
+                    Matcher matcher = Patterns.KEYWORD.matcher(truncatedSource);
                     if (matcher.matches()) {
                         currentPosition = matcher.end(1) - 1;
                         return KEYWORD;
@@ -96,9 +105,9 @@ public class FiniteStateMachine {
                     return OPERATOR;
                 }
 
-                if (character == '(' || character == ')' || character == '[' || character == ']' || character == '{' ||
-                        character == '}' || character == '@' || character == ',' || character == ':' ||
-                        character == '.' || character == '`' || character == ';') {
+                if (character == '(' || character == ')' || character == '[' || character == ']' ||
+                        character == '{' || character == '}' || character == '@' || character == ',' ||
+                        character == ':' || character == '.' || character == '`' || character == ';') {
                     return DELIMITER;
                 }
 
@@ -147,11 +156,25 @@ public class FiniteStateMachine {
                     return OPERATOR;
                 }
 
+                if (character == '$' || character == '?') {
+                    errors.addError(positionInSource,
+                            charSequence.subSequence(0, currentPosition + 1).toString(),
+                            "Unexpected symbol");
+                    return ERROR_SEQUENCE;
+                }
+
                 break;
 
             case IDENTIFIER:
                 if (Character.isLetterOrDigit(character) || character == '_') {
                     return IDENTIFIER;
+                }
+
+                if (!CharUtils.isDelimiterOrOperatorStart(character) && !Character.isWhitespace(character)) {
+                    errors.addError(positionInSource,
+                            charSequence.subSequence(0, currentPosition + 1).toString(),
+                            "Unexpected symbol in identifier");
+                    return ERROR_SEQUENCE;
                 }
 
                 break;
@@ -191,7 +214,7 @@ public class FiniteStateMachine {
                         currentPosition += 2;
                         return LONG_STRING_ITEM;
                     }
-                    return SHORT_STRING_ITEM;
+                    return STRING_ITEM;
                 }
 
                 if (character == '\'') {
@@ -199,12 +222,12 @@ public class FiniteStateMachine {
                         currentPosition += 2;
                         return LONG_STRING_ITEM_SINGLE_QUOTED;
                     }
-                    return SHORT_STRING_ITEM_SINGLE_QUOTED;
+                    return STRING_ITEM_SINGLE_QUOTED;
                 }
 
                 break;
 
-            case SHORT_STRING_ITEM:
+            case STRING_ITEM:
                 if (character == '"') {
                     return STRING;
                 }
@@ -214,15 +237,15 @@ public class FiniteStateMachine {
                 }
 
                 if (character == '\n') {
-                    errors.add(new LexicalError(positionInSource,
+                    errors.addError(positionInSource,
                             charSequence.subSequence(0, currentPosition + 1).toString(),
-                            "Unexpected line break in string literal"));
+                            "Unexpected line break in string literal");
                     return ERROR_SEQUENCE;
                 }
 
-                return SHORT_STRING_ITEM;
+                return STRING_ITEM;
 
-            case SHORT_STRING_ITEM_SINGLE_QUOTED:
+            case STRING_ITEM_SINGLE_QUOTED:
                 if (character == '\'') {
                     return STRING;
                 }
@@ -231,24 +254,20 @@ public class FiniteStateMachine {
                     return ESCAPE_SEQ_SINGLE_QUOTED;
                 }
 
-                if (character != '\n') {
-                    return SHORT_STRING_ITEM_SINGLE_QUOTED;
-                }
-
                 if (character == '\n') {
-                    errors.add(new LexicalError(positionInSource,
+                    errors.addError(positionInSource,
                             charSequence.subSequence(0, currentPosition + 1).toString(),
-                            "Unexpected line break in string literal"));
+                            "Unexpected line break in string literal");
                     return ERROR_SEQUENCE;
                 }
 
-                break;
+                return STRING_ITEM_SINGLE_QUOTED;
 
             case ESCAPE_SEQ:
-                return SHORT_STRING_ITEM;
+                return STRING_ITEM;
 
             case ESCAPE_SEQ_SINGLE_QUOTED:
-                return SHORT_STRING_ITEM_SINGLE_QUOTED;
+                return STRING_ITEM_SINGLE_QUOTED;
 
             case ESCAPE_SEQ_LONG_STRING:
                 return LONG_STRING_ITEM;
@@ -277,10 +296,10 @@ public class FiniteStateMachine {
                     return IMAGINARY_NUMBER;
                 }
 
-                if (Character.isAlphabetic(character)) {
-                    errors.add(new LexicalError(positionInSource,
+                if (!CharUtils.isDelimiterOrOperatorStart(character) && !Character.isWhitespace(character)) {
+                    errors.addError(positionInSource,
                             charSequence.subSequence(0, currentPosition + 1).toString(),
-                            "Unexpected symbol in integer literal"));
+                            "Unexpected symbol in integer literal");
                     return ERROR_SEQUENCE;
                 }
 
@@ -302,10 +321,10 @@ public class FiniteStateMachine {
                     return IMAGINARY_NUMBER;
                 }
 
-                if (Character.isAlphabetic(character)) {
-                    errors.add(new LexicalError(positionInSource,
+                if (!CharUtils.isDelimiterOrOperatorStart(character) && !Character.isWhitespace(character)) {
+                    errors.addError(positionInSource,
                             charSequence.subSequence(0, currentPosition + 1).toString(),
-                            "Unexpected symbol in float literal"));
+                            "Unexpected symbol in float literal");
                     return ERROR_SEQUENCE;
                 }
 
@@ -316,10 +335,11 @@ public class FiniteStateMachine {
                     return HEX_INTEGER;
                 }
 
-                if (Character.isAlphabetic(character)) {
-                    errors.add(new LexicalError(positionInSource,
+                if (!CharUtils.isDelimiterOrOperatorStart(character) && !Character.isWhitespace(character)) {
+                    errors.addError(positionInSource,
                             charSequence.subSequence(0, currentPosition + 1).toString(),
-                            "Unexpected symbol in hex integer literal"));
+                            "Unexpected symbol in hex integer literal");
+                    return ERROR_SEQUENCE;
                 }
 
                 break;
@@ -329,10 +349,10 @@ public class FiniteStateMachine {
                     return BIN_INTEGER;
                 }
 
-                if (Character.isAlphabetic(character)) { // todo check if it's not delimiter, operator or whitespace
-                    errors.add(new LexicalError(positionInSource,
+                if (!CharUtils.isDelimiterOrOperatorStart(character) && !Character.isWhitespace(character)) {
+                    errors.addError(positionInSource,
                             charSequence.subSequence(0, currentPosition + 1).toString(),
-                            "Unexpected symbol in bin integer literal"));
+                            "Unexpected symbol in bin integer literal");
                     return ERROR_SEQUENCE;
                 }
 
@@ -343,10 +363,10 @@ public class FiniteStateMachine {
                     return OCT_INTEGER;
                 }
 
-                if (Character.isAlphabetic(character)) {
-                    errors.add(new LexicalError(positionInSource,
+                if (!CharUtils.isDelimiterOrOperatorStart(character) && !Character.isWhitespace(character)) {
+                    errors.addError(positionInSource,
                             charSequence.subSequence(0, currentPosition + 1).toString(),
-                            "Unexpected symbol in oct integer literal"));
+                            "Unexpected symbol in oct integer literal");
                     return ERROR_SEQUENCE;
                 }
 

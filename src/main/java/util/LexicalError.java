@@ -1,7 +1,5 @@
 package util;
 
-import token.TokenType;
-
 public class LexicalError {
 
     private int beginIndex;
@@ -26,7 +24,7 @@ public class LexicalError {
     public String toString() {
         return "LexicalError{" +
                 "beginIndex=" + beginIndex +
-                ", tokenString='" + tokenString + '\'' +
+                ", tokenString='" + tokenString.replaceAll("\n", "\\\\n") + '\'' +
                 ", message='" + message + '\'' +
                 '}';
     }
